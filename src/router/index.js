@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import CategoryView from '@/views/CategoryView.vue'
-import RankView from '../views/RankView.vue'
+// import RankView from '../views/RankView.vue'
 
 const routes = [
   {
@@ -15,11 +15,11 @@ const routes = [
     component: CategoryView,
     props: true, // Pasa los parámetros de ruta como props al componente
   },
-  {
-    path: '/rankings',
-    name: 'rankings',
-    component: RankView,
-  }
+  // {
+  //   path: '/rankings',
+  //   name: 'rankings',
+  //   component: RankView,
+  // }
 ]
 
 const router = createRouter({
