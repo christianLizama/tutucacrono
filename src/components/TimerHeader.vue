@@ -17,6 +17,12 @@
         class="d-flex align-items-center justify-start header-title"
         style="width: 30%"
       >
+        <span class="header-chip">Team</span>
+      </div>
+      <div
+        class="d-flex align-items-center justify-start header-title"
+        style="width: 30%"
+      >
         <span class="header-chip">Tiempo (min:seg:mil)</span>
       </div>
       <div

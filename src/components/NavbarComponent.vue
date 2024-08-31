@@ -6,7 +6,7 @@
       v-for="category in categories"
       :key="category"
       text
-      @click="selectCategory(category)"
+      @click="navigateToCategory(category)"
     >
       {{ category }}
     </v-btn>
@@ -15,21 +15,18 @@
 
 <script>
 export default {
-  name: "NavbarComponent",
+  name: 'NavbarComponent',
   data() {
     return {
-      categories: ["Kids","Infantil","Junior", "Damas", "Novicios","Rigido","Experto","Elite", "Master A", "Open Master", ],
+      categories: [
+        'Kids', 'Infantil', 'Junior', 'Damas', 'Novicios', 'Rigido', 'Experto', 'Elite', 'Master A', 'Open Master',
+      ],
     };
   },
   methods: {
-    selectCategory(category) {
-      // Aquí podrías manejar la lógica para cambiar de categoría, por ejemplo, emitir un evento
-      this.$emit("category-selected", category);
+    navigateToCategory(category) {
+      this.$router.push({ name: 'category', params: { category } });
     },
   },
 };
 </script>
-
-<style scoped>
-/* El estilo en scoped se mantiene similar */
-</style>
