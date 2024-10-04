@@ -1,7 +1,23 @@
 <template>
   <div>
-    <h1 class="text-center mt-3">Race Leaderboard</h1>
-    <div v-if="updateTimeEvents.length > 0">
+    <h1 class="text-center mt-3">Resultados Categoría {{ selectedCategory}}</h1>
+
+    <!-- Seleccionador de categorías -->
+    <v-select
+      v-model="selectedCategory"
+      :items="categories"
+      item-title="value"
+      label="Seleccionar categoría"
+      class="mx-4 my-3"
+      @change="fetchData"
+    ></v-select>
+
+    <div v-if="isLoading" class="text-center">
+      <v-progress-circular indeterminate color="primary"></v-progress-circular>
+      <p>Cargando...</p>
+    </div>
+
+    <div v-else-if="updateTimeEvents.length > 0">
       <v-list>
         <transition-group name="slide-fade" tag="div">
           <v-list-item
@@ -18,7 +34,7 @@
                   <span class="white--text">{{ index + 1 }}</span>
                 </v-avatar>
               </v-col>
-              
+
               <!-- Nombre -->
               <v-col cols="3">
                 <v-list-item-title>{{ event.nombre }}</v-list-item-title>
@@ -50,13 +66,28 @@
 </template>
 
 <script>
-import { state } from '@/socket';
+import axios from 'axios';
 
 export default {
   name: "RankView",
   data() {
     return {
-      updateTimeEvents: state.updateTimeEvents // Vincula los eventos updateTime al estado local
+      updateTimeEvents: [],
+      selectedCategory: 'Kids', // Valor inicial de categoría
+      categories: [
+        { text: 'Kids', value: 'Kids' },
+        { text: 'Infantil', value: 'Infantil' },
+        { text: 'Junior', value: 'Junior' },
+        { text: 'Damas', value: 'Damas' },
+        { text: 'Novicios', value: 'Novicios' },
+        { text: 'Rígido', value: 'Rígido' },
+        { text: 'Experto', value: 'Experto' },
+        { text: 'Elite', value: 'Elite' },
+        { text: 'Master A', value: 'Master A' },
+        { text: 'Open Master', value: 'Open Master' }
+      ],
+      isLoading: false, // Estado de carga
+      previousUpdateTimeEvents: [] // Para comparar cambios
     };
   },
   computed: {
@@ -65,13 +96,30 @@ export default {
       return this.updateTimeEvents.slice().sort((a, b) => a.tiempo - b.tiempo);
     }
   },
-  watch: {
-    // Observa cambios en los eventos updateTime para actualizar el componente
-    "state.updateTimeEvents"(newEvents) {
-      this.updateTimeEvents = newEvents;
-    }
+  mounted() {
+    this.fetchData(); // Llama a la función cuando el componente es montado
+    this.interval = setInterval(this.fetchData, 5000); // Consulta cada 10 segundos
+  },
+  beforeUnmount() {
+    clearInterval(this.interval); // Limpia el intervalo
   },
   methods: {
+    // Método para obtener los datos de la API en función de la categoría seleccionada
+    async fetchData() {
+      this.isLoading = true; // Inicia la carga
+      try {
+        const response = await axios.get(`http://127.0.0.1:3030/corredores/categoria/${this.selectedCategory}/tiempo`);
+        // Verificar si hay cambios en los tiempos
+        if (JSON.stringify(this.updateTimeEvents) !== JSON.stringify(response.data.corredores)) {
+          this.previousUpdateTimeEvents = this.updateTimeEvents; // Guarda el estado anterior
+          this.updateTimeEvents = response.data.corredores; // Actualiza con los nuevos datos
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        this.isLoading = false; // Finaliza la carga
+      }
+    },
     // Método para formatear el tiempo en minutos:segundos:milisegundos
     formatTime(ms) {
       const minutes = Math.floor(ms / 60000);

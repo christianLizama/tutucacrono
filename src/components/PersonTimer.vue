@@ -31,19 +31,23 @@
         >
           <v-icon>mdi-restart</v-icon>
         </v-btn>
-        <!-- Boton para guardar el tiempo en BD -->
         <v-btn
           @click="saveTimeInBD"
           class="ma-2"
-          color=""
+          :color="timeSaved ? 'success' : ''"
           dark
           :disabled="isSavedAndRunning()"
-         
         >
-          <v-icon>mdi-inbox-arrow-up</v-icon>
+          <v-icon>{{ timeSaved ? 'mdi-check' : 'mdi-inbox-arrow-up' }}</v-icon>
         </v-btn>
       </div>
     </v-card-text>
+    <v-snackbar v-model="snackbar" :timeout="3000" color="success">
+      {{ snackbarText }}
+      <template v-slot:action="{ attrs }">
+        <v-btn text v-bind="attrs" @click="snackbar = false">Cerrar</v-btn>
+      </template>
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -63,6 +67,9 @@ export default {
       time: 0, // El tiempo en milisegundos
       running: false,
       interval: null,
+      snackbar: false, // Controla la visibilidad de la notificación
+      snackbarText: '', // Texto de la notificación
+      timeSaved: false // Estado de guardado del tiempo
     };
   },
   mounted() {
@@ -70,10 +77,7 @@ export default {
   },
   methods: {
     isSavedAndRunning() {
-      if (this.running) {
-        return true;
-      }
-      return false;
+      return this.running;
     },
     startStopTimer() {
       if (this.running) {
@@ -97,9 +101,7 @@ export default {
       const mins = Math.floor(milliseconds / 60000);
       const secs = Math.floor((milliseconds % 60000) / 1000);
       const millis = milliseconds % 1000;
-      return `${mins}:${secs < 10 ? "0" : ""}${secs}:${
-        millis < 100 ? (millis < 10 ? "00" : "0") : ""
-      }${millis}`;
+      return `${mins}:${secs < 10 ? "0" : ""}${secs}:${millis < 100 ? (millis < 10 ? "00" : "0") : ""}${millis}`;
     },
     saveTime() {
       const storedTimes = JSON.parse(localStorage.getItem("timers")) || {};
@@ -116,8 +118,13 @@ export default {
           { tiempo: this.time } // Aquí se envía el campo "tiempo" con el valor actual
         );
         console.log("Tiempo guardado en BD:", response.data);
+        this.timeSaved = true; // Cambia el estado a guardado
+        this.snackbarText = 'Tiempo guardado exitosamente!';
+        this.snackbar = true; // Muestra la notificación
       } catch (error) {
         console.error("Error al guardar el tiempo en BD:", error);
+        this.snackbarText = 'Error al guardar el tiempo.';
+        this.snackbar = true; // Muestra un mensaje de error
       }
     },
     loadTime() {
