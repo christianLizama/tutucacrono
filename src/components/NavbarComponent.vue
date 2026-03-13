@@ -19,12 +19,17 @@ export default {
   data() {
     return {
       categories: [
-        'Kids', 'Infantil', 'Junior', 'Damas', 'Novicios', 'Rigido', 'Experto', 'Elite', 'Master A', 'Open Master',
+        'Kids', 'Infantil', 'Junior', 'Damas', 'Novicios', 'Rígido', 'Experto', 'Elite', 'Master A', 'Open Master', 'E-bike Varones', 'E-bike Damas' ,'Corredores'
       ],
     };
   },
   methods: {
     navigateToCategory(category) {
+      if (category === 'Corredores') {
+        this.$router.push({ name: 'corredores' });
+        return; 
+      }
+
       this.$router.push({ name: 'category', params: { category } });
     },
   },

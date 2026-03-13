@@ -10,18 +10,14 @@
       label="Seleccionar categoría"
       class="mx-4 my-3"
       @change="fetchData"
+      
     ></v-select>
 
-    <div v-if="isLoading" class="text-center">
-      <v-progress-circular indeterminate color="primary"></v-progress-circular>
-      <p>Cargando...</p>
-    </div>
-
-    <div v-else-if="updateTimeEvents.length > 0">
+    <div>
       <v-list>
-        <transition-group name="slide-fade" tag="div">
+        <transition-group>
           <v-list-item
-            v-for="(event, index) in sortedUpdateTimeEvents"
+            v-for="(event, index) in updateTimeEvents"
             :key="event.rut"
             class="mx-4 my-2"
             :color="getColor(index)"
@@ -52,15 +48,12 @@
 
               <!-- Tiempo -->
               <v-col cols="2" class="text-right">
-                <v-list-item-subtitle>{{ formatTime(event.tiempo) }}</v-list-item-subtitle>
+                <v-list-item-subtitle class="font-weight-bold">{{ formatTime(event.tiempo) }}</v-list-item-subtitle>
               </v-col>
             </v-row>
           </v-list-item>
         </transition-group>
       </v-list>
-    </div>
-    <div v-else>
-      <p class="text-center">No update time events yet.</p>
     </div>
   </div>
 </template>
@@ -73,7 +66,7 @@ export default {
   data() {
     return {
       updateTimeEvents: [],
-      selectedCategory: 'Kids', // Valor inicial de categoría
+      selectedCategory: 'Infantil', // Valor inicial de categoría
       categories: [
         { text: 'Kids', value: 'Kids' },
         { text: 'Infantil', value: 'Infantil' },
@@ -86,45 +79,40 @@ export default {
         { text: 'Master A', value: 'Master A' },
         { text: 'Open Master', value: 'Open Master' }
       ],
-      isLoading: false, // Estado de carga
-      previousUpdateTimeEvents: [] // Para comparar cambios
     };
   },
-  computed: {
-    // Computed property para ordenar los eventos por tiempo (ascendente)
-    sortedUpdateTimeEvents() {
-      return this.updateTimeEvents.slice().sort((a, b) => a.tiempo - b.tiempo);
-    }
-  },
-  mounted() {
+  created() {
     this.fetchData(); // Llama a la función cuando el componente es montado
-    this.interval = setInterval(this.fetchData, 5000); // Consulta cada 10 segundos
+    // this.interval = setInterval(this.fetchData, 20000); // Consulta cada 10 segundos
   },
-  beforeUnmount() {
-    clearInterval(this.interval); // Limpia el intervalo
+  watch: {
+    selectedCategory(newValue){
+      if(newValue){
+        this.fetchData();
+      }
+    }
   },
   methods: {
     // Método para obtener los datos de la API en función de la categoría seleccionada
     async fetchData() {
-      this.isLoading = true; // Inicia la carga
+      console.log("obteniedo datos");
       try {
         const response = await axios.get(`http://127.0.0.1:3030/corredores/categoria/${this.selectedCategory}/tiempo`);
         // Verificar si hay cambios en los tiempos
         if (JSON.stringify(this.updateTimeEvents) !== JSON.stringify(response.data.corredores)) {
-          this.previousUpdateTimeEvents = this.updateTimeEvents; // Guarda el estado anterior
           this.updateTimeEvents = response.data.corredores; // Actualiza con los nuevos datos
+
         }
       } catch (error) {
         console.error('Error fetching data:', error);
-      } finally {
-        this.isLoading = false; // Finaliza la carga
       }
     },
     // Método para formatear el tiempo en minutos:segundos:milisegundos
     formatTime(ms) {
-      const minutes = Math.floor(ms / 60000);
-      const seconds = ((ms % 60000) / 1000).toFixed(2);
-      return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+      const mins = Math.floor(ms / 60000);
+      const secs = Math.floor((ms % 60000) / 1000);
+      const millis = Math.floor(ms % 1000);
+      return `${mins}:${secs.toString().padStart(2, "0")}:${millis.toString().padStart(3, "0")}`;
     },
     // Método para obtener el color de la lista según la posición
     getColor(index) {

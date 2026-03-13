@@ -1,12 +1,7 @@
 <template>
   <v-card class="mb-3">
     <v-card-text class="d-flex align-items-center header-content">
-      <div
-        class="d-flex align-items-center justify-start header-title"
-        style="width: 10%"
-      >
-        <span class="header-chip">Número</span>
-      </div>
+      
       <div
         class="d-flex align-items-center justify-start header-title"
         style="width: 30%"
@@ -18,6 +13,12 @@
         style="width: 30%"
       >
         <span class="header-chip">Team</span>
+      </div>
+      <div
+        class="d-flex align-items-center justify-start header-title"
+        style="width: 10%"
+      >
+        <span class="header-chip">Número</span>
       </div>
       <div
         class="d-flex align-items-center justify-start header-title"
