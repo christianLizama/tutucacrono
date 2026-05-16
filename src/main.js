@@ -11,12 +11,14 @@ import '@mdi/font/css/materialdesignicons.css'
 // Components
 import App from './App.vue'
 
+// Inicializar WebSocket (side-effect: conecta y escucha eventos)
+import './socket'
+
 const vuetify = createVuetify({
   components,
   directives,
-  ssr: true,
   icons: {
-    defaultSet: 'mdi', // This is already the default value - only for display purposes
+    defaultSet: 'mdi',
   },
 })
 

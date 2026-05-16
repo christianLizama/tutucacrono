@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <Navbar @category-selected="handleCategorySelected" />
+    <Navbar />
     <v-main>
       <router-view />
     </v-main>
@@ -14,16 +14,6 @@ export default {
   name: 'App',
   components: {
     Navbar,
-  },
-  data() {
-    return {
-      selectedCategory: '',
-    };
-  },
-  methods: {
-    handleCategorySelected(category) {
-      this.selectedCategory = category;
-    },
   },
 };
 </script>

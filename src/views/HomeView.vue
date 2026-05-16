@@ -1,34 +1,19 @@
 <template>
-  <div class="mt-2">
-    <TimerHeader />
-    <PersonTimer v-for="person in persons" :key="person.id" :person="person" />
+  <div class="home">
+    <h1>Bienvenido a Tutuca MTB</h1>
+    <p>Selecciona una categoría en la barra de navegación para ver los corredores.</p>
   </div>
 </template>
 
 <script>
-import PersonTimer from '@/components/PersonTimer.vue';
-import TimerHeader from '@/components/TimerHeader.vue';
 export default {
   name: 'HomeView',
-  components: {
-    PersonTimer,
-    TimerHeader,
-  },
-  data() {
-    return {
-      selectedCategory: '', // Categoría seleccionada
-      // Lista de personas con sus nombres y IDs únicos
-      persons: [
-        { id: 1, name: 'Gonzalo Aliaga' },
-        { id: 2, name: 'Samuel Guzman' },
-        { id: 3, name: 'Ñapitan' },
-      ],
-    };
-  },
-  methods: {
-    handleCategorySelected(category) {
-      this.selectedCategory = category;
-    },
-  },
 };
 </script>
+
+<style scoped>
+.home {
+  text-align: center;
+  margin-top: 20px;
+}
+</style>
