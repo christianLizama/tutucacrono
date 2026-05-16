@@ -3,7 +3,37 @@
     <v-card flat>
       <v-card-title class="d-flex align-center pe-2">
         <v-icon icon="mdi-bike-fast"></v-icon> &nbsp; Corredores &nbsp;
-        <b>{{ cantidadCorredores }}</b>
+        <v-chip color="primary" class="ml-2 font-weight-bold">
+          {{ cantidadCorredores }} totales
+        </v-chip>
+
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              color="primary"
+              variant="text"
+              v-bind="props"
+              class="ml-2"
+              append-icon="mdi-chevron-down"
+            >
+              Ver desglose
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-subheader>Corredores por Categoría</v-list-subheader>
+            <v-list-item v-for="(item, index) in conteoPorCategoria" :key="index">
+              <template v-slot:prepend>
+                <v-chip size="small" :color="item.color" class="mr-3">
+                  {{ item.cantidad }}
+                </v-chip>
+              </template>
+              <v-list-item-title class="font-weight-medium">
+                {{ item.categoria }}
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
         <v-spacer></v-spacer>
 
         <v-text-field
@@ -267,6 +297,29 @@ export default {
         corredor.nombre.toLowerCase().includes(this.search.toLowerCase())
       );
     },
+    conteoPorCategoria() {
+      const conteo = {};
+      this.corredores.forEach(c => {
+        // En algunos casos la categoría puede venir como objeto o string,
+        // aseguramos que tomamos el valor correcto.
+        const catName = typeof c.categoria === 'object' ? c.categoria.value : c.categoria;
+        if(conteo[catName]) {
+          conteo[catName]++;
+        } else {
+          conteo[catName] = 1;
+        }
+      });
+      
+      // Mapear con el color de la categoría y ordenar de mayor a menor cantidad
+      return Object.keys(conteo).map(catName => {
+        const categoriaInfo = this.categorias.find(c => c.value === catName);
+        return {
+          categoria: catName,
+          cantidad: conteo[catName],
+          color: categoriaInfo ? categoriaInfo.color : 'grey'
+        };
+      }).sort((a, b) => b.cantidad - a.cantidad);
+    }
   },
   methods: {
     async fetchCorredores() {
@@ -346,7 +399,7 @@ export default {
         return;
       }
       try {
-        await axios.delete(`http://127.0.1:3030/corredores/${id}`);
+        await axios.delete(`http://127.0.0.1:3030/corredores/${id}`);
         await this.fetchCorredores();
         // Mostrar snackbar después de la eliminación exitosa
         this.snackbarMessage = "Corredor eliminado correctamente";
