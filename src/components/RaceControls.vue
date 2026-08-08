@@ -301,6 +301,19 @@ export default {
       snackbarColor: 'success',
     };
   },
+  watch: {
+    showCrearDialog(isOpen) {
+      if (isOpen) {
+        this.nuevoNombre = `Qualy ${this.categoria}`;
+      }
+    },
+    categoria: {
+      immediate: true,
+      handler(val) {
+        this.nuevoNombre = `Qualy ${val}`;
+      },
+    },
+  },
   computed: {
     carrera() {
       return this.$store.getters.carreraActual;

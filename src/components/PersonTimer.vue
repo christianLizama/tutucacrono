@@ -119,23 +119,115 @@
           >
             DNF
           </v-btn>
+
+          <!-- Botón Editar Tiempo a Mano (durante carrera) -->
+          <v-btn
+            @click="showEditTimeDialog"
+            color="amber-darken-2"
+            size="large"
+            variant="tonal"
+            icon
+            :loading="loadingAction"
+          >
+            <v-icon size="large">mdi-timer-edit-outline</v-icon>
+            <v-tooltip activator="parent" location="top">Editar tiempo a mano</v-tooltip>
+          </v-btn>
         </template>
 
-        <!-- Tiempo guardado (solo lectura cuando finalizado) -->
+        <!-- Carrera finalizada / sin curso -->
         <template v-if="!carreraEnCurso">
           <v-chip
             v-if="isFinished"
             color="success"
             size="large"
             variant="tonal"
-            class="text-button"
+            class="text-button mr-1"
           >
             <v-icon start size="large">mdi-check</v-icon>
             Registrado
           </v-chip>
+
+          <!-- Botón Editar Tiempo a Mano (fuera de carrera / finalizada) -->
+          <v-btn
+            @click="showEditTimeDialog"
+            color="amber-darken-2"
+            size="large"
+            variant="tonal"
+            icon
+            :loading="loadingAction"
+          >
+            <v-icon size="large">mdi-timer-edit-outline</v-icon>
+            <v-tooltip activator="parent" location="top">Editar tiempo a mano</v-tooltip>
+          </v-btn>
         </template>
       </div>
     </v-card-text>
+
+    <!-- Diálogo para Editar Tiempo a Mano en Qualy / Final -->
+    <v-dialog v-model="editTimeDialog" max-width="480px">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pt-4 px-6">
+          <v-icon color="amber-darken-2" class="mr-2">mdi-timer-edit-outline</v-icon>
+          Editar Tiempo Manual
+        </v-card-title>
+
+        <v-card-text class="px-6">
+          <p class="mb-3 text-body-1 font-weight-medium">
+            Piloto: <span class="text-primary">{{ corredor.nombre }}</span> (N° {{ corredor.numero }})
+          </p>
+
+          <v-alert color="amber-darken-2" variant="tonal" class="mb-4" density="compact">
+            Corrige el tiempo del piloto en esta carrera (Minutos, Segundos y Milisegundos).
+          </v-alert>
+
+          <div class="d-flex ga-2">
+            <v-text-field
+              v-model.number="timeInputs.minutos"
+              label="Minutos"
+              type="number"
+              min="0"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model.number="timeInputs.segundos"
+              label="Segundos"
+              type="number"
+              min="0"
+              max="59"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model.number="timeInputs.milisegundos"
+              label="Milisegundos"
+              type="number"
+              min="0"
+              max="999"
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <div class="text-center my-2 py-3 bg-grey-lighten-4 rounded-lg border">
+            <span class="text-caption text-grey-darken-1 d-block text-uppercase font-weight-bold">
+              Tiempo Resultado
+            </span>
+            <span class="text-h4 font-weight-black text-amber-darken-3">
+              {{ formattedCalculatedTime }}
+            </span>
+          </div>
+        </v-card-text>
+
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn @click="editTimeDialog = false" color="grey" variant="text">Cancelar</v-btn>
+          <v-btn @click="guardarTiempoManual" color="amber-darken-2" variant="flat" :loading="loadingAction">
+            Guardar Tiempo
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -153,6 +245,12 @@ export default {
       localDisplayTime: 0,
       rafId: null,
       loadingAction: false,
+      editTimeDialog: false,
+      timeInputs: {
+        minutos: 0,
+        segundos: 0,
+        milisegundos: 0,
+      },
     };
   },
   computed: {
@@ -214,6 +312,17 @@ export default {
       };
       return map[this.resultado.estado] || '';
     },
+
+    calculatedTiempoMs() {
+      const min = Math.max(0, parseInt(this.timeInputs.minutos) || 0);
+      const sec = Math.max(0, parseInt(this.timeInputs.segundos) || 0);
+      const ms = Math.max(0, parseInt(this.timeInputs.milisegundos) || 0);
+      return (min * 60000) + (sec * 1000) + ms;
+    },
+
+    formattedCalculatedTime() {
+      return this.formatTime(this.calculatedTiempoMs);
+    },
   },
   methods: {
     formatTime(ms) {
@@ -268,6 +377,32 @@ export default {
         });
       } catch (error) {
         console.error('Error deteniendo timer:', error);
+      } finally {
+        this.loadingAction = false;
+      }
+    },
+
+    showEditTimeDialog() {
+      const currentMs = this.resultado.tiempo || 0;
+      this.timeInputs = {
+        minutos: Math.floor(currentMs / 60000),
+        segundos: Math.floor((currentMs % 60000) / 1000),
+        milisegundos: currentMs % 1000,
+      };
+      this.editTimeDialog = true;
+    },
+
+    async guardarTiempoManual() {
+      this.loadingAction = true;
+      try {
+        const finalTiempo = this.calculatedTiempoMs;
+        await this.$store.dispatch('registrarTiempo', {
+          corredorId: this.corredorId,
+          tiempo: finalTiempo,
+        });
+        this.editTimeDialog = false;
+      } catch (error) {
+        console.error('Error guardando tiempo manual:', error);
       } finally {
         this.loadingAction = false;
       }
