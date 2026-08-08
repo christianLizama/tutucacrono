@@ -49,6 +49,19 @@
 
         <v-btn
           class="me-2 ml-4"
+          prepend-icon="mdi-firebase"
+          rounded="lg"
+          color="deep-orange"
+          variant="tonal"
+          :loading="importLoading"
+          :disabled="importLoading"
+          @click="showImportDialog"
+        >
+          Importar Firebase
+        </v-btn>
+
+        <v-btn
+          class="me-2"
           prepend-icon="mdi-plus"
           rounded="lg"
           text="Agregar"
@@ -65,6 +78,16 @@
       >
         <template v-slot:[`item.actions`]="{ item }">
           <div class="d-flex ga-2 justify-end">
+            <v-btn
+              icon
+              size="small"
+              color="purple"
+              title="Duplicar en otra categoría"
+              @click="showDuplicateDialog(item)"
+            >
+              <v-icon size="small">mdi-content-copy</v-icon>
+            </v-btn>
+
             <v-btn
               icon
               size="small"
@@ -222,7 +245,186 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-snackbar v-model="snackbar" :timeout="3000" color="success">
+    <!-- Diálogo de confirmación de importación -->
+    <v-dialog v-model="importDialog" max-width="480px">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pt-4 px-6">
+          <v-icon color="deep-orange" class="mr-2">mdi-firebase</v-icon>
+          Importar desde Firebase
+        </v-card-title>
+        <v-card-text class="px-6">
+          <p>Se importarán todos los corredores de la colección <strong>inscritos</strong> en Firebase Firestore a la base de datos MongoDB.</p>
+          <br />
+          <p class="text-medium-emphasis text-body-2">Los corredores que ya existen (mismo RUT) serán omitidos automáticamente para evitar duplicados. El tiempo de cada corredor se inicializará en <strong>0</strong>.</p>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn @click="importDialog = false" color="grey" variant="text">Cancelar</v-btn>
+          <v-btn
+            color="deep-orange"
+            variant="flat"
+            :loading="importLoading"
+            prepend-icon="mdi-download"
+            @click="importarDesdeFirebase"
+          >
+            Importar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Diálogo de resultado de importación -->
+    <v-dialog v-model="importResultDialog" max-width="560px">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pt-4 px-6">
+          <v-icon :color="importResult.errores > 0 ? 'warning' : 'success'" class="mr-2">mdi-check-circle</v-icon>
+          Resultado de importación
+        </v-card-title>
+        <v-card-text class="px-6">
+          <div class="d-flex ga-4 mb-4">
+            <v-chip color="success" variant="tonal" prepend-icon="mdi-check">
+              {{ importResult.importados }} importados
+            </v-chip>
+            <v-chip color="warning" variant="tonal" prepend-icon="mdi-skip-next">
+              {{ importResult.omitidos }} omitidos
+            </v-chip>
+            <v-chip color="error" variant="tonal" prepend-icon="mdi-alert">
+              {{ importResult.errores }} errores
+            </v-chip>
+          </div>
+          <v-list v-if="importResult.detalles && importResult.detalles.length > 0" density="compact" max-height="240" style="overflow-y: auto;">
+            <v-list-item
+              v-for="(detalle, i) in importResult.detalles"
+              :key="i"
+              :title="detalle"
+              class="text-body-2"
+            />
+          </v-list>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn color="primary" variant="flat" @click="importResultDialog = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Diálogo para Duplicar Corredor -->
+    <v-dialog v-model="duplicateDialog" max-width="600px">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pt-4 px-6">
+          <v-icon color="purple" class="mr-2">mdi-content-copy</v-icon>
+          Duplicar Piloto en Otra Categoría
+        </v-card-title>
+        <v-card-text class="px-6">
+          <v-alert color="purple" variant="tonal" class="mb-4" density="compact">
+            Se inscribirá una copia de <strong>{{ duplicateCorredor.nombre }}</strong> en una nueva categoría.
+          </v-alert>
+          <v-form ref="duplicateForm" v-model="valid">
+            <v-text-field
+              v-model="duplicateCorredor.nombre"
+              label="Nombre"
+              required
+            />
+            <v-select
+              v-model="duplicateCorredor.categoria"
+              :items="categorias"
+              item-title="value"
+              label="Nueva Categoría"
+              required
+            />
+            <v-text-field
+              v-model="duplicateCorredor.edad"
+              label="Edad"
+              type="number"
+              required
+            />
+            <v-text-field v-model="duplicateCorredor.rut" label="RUT" required />
+            <v-text-field v-model="duplicateCorredor.team" label="Equipo" required />
+            <v-text-field
+              v-model="duplicateCorredor.telefono"
+              label="Teléfono"
+              required
+            />
+            <v-checkbox v-model="duplicateCorredor.entregado" label="Número Entregado" />
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn @click="closeDuplicateDialog" color="grey" variant="text">Cancelar</v-btn>
+          <v-btn @click="duplicateCorredorSubmit" color="purple" variant="flat">
+            Duplicar Piloto
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Diálogo para Editar Tiempo a Mano -->
+    <v-dialog v-model="editTimeDialog" max-width="480px">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pt-4 px-6">
+          <v-icon color="amber-darken-2" class="mr-2">mdi-timer-edit-outline</v-icon>
+          Editar Tiempo Manual
+        </v-card-title>
+
+        <v-card-text class="px-6">
+          <p class="mb-3 text-body-1 font-weight-medium">
+            Piloto: <span class="text-primary">{{ timeCorredor.nombre }}</span>
+          </p>
+
+          <v-alert color="amber-darken-2" variant="tonal" class="mb-4" density="compact">
+            Ingresa los Minutos, Segundos y Milisegundos para corregir el tiempo del corredor.
+          </v-alert>
+
+          <div class="d-flex ga-2">
+            <v-text-field
+              v-model.number="timeInputs.minutos"
+              label="Minutos"
+              type="number"
+              min="0"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model.number="timeInputs.segundos"
+              label="Segundos"
+              type="number"
+              min="0"
+              max="59"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model.number="timeInputs.milisegundos"
+              label="Milisegundos"
+              type="number"
+              min="0"
+              max="999"
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <div class="text-center my-2 py-3 bg-grey-lighten-4 rounded-lg border">
+            <span class="text-caption text-grey-darken-1 d-block text-uppercase font-weight-bold">
+              Tiempo Resultado
+            </span>
+            <span class="text-h4 font-weight-black text-amber-darken-3">
+              {{ formattedCalculatedTime }}
+            </span>
+          </div>
+        </v-card-text>
+
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer></v-spacer>
+          <v-btn @click="closeEditTimeDialog" color="grey" variant="text">Cancelar</v-btn>
+          <v-btn @click="updateTimeSubmit" color="amber-darken-2" variant="flat">
+            Guardar Tiempo
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snackbar" :timeout="4000" :color="snackbarColor">
       {{ snackbarMessage }}
       <v-btn color="white" text @click="snackbar = false">Cerrar</v-btn>
     </v-snackbar>
@@ -237,9 +439,19 @@ export default {
     return {
       snackbar: false,
       snackbarMessage: "",
+      snackbarColor: "success",
       cantidadCorredores: 0,
       search: "",
       corredores: [],
+      importLoading: false,
+      importDialog: false,
+      importResultDialog: false,
+      importResult: {
+        importados: 0,
+        omitidos: 0,
+        errores: 0,
+        detalles: [],
+      },
       selectedCorredor: {
         nombre: "",
         categoria: "",
@@ -262,6 +474,28 @@ export default {
       },
       createDialog: false,
       updateDialog: false,
+      duplicateDialog: false,
+      editTimeDialog: false,
+      timeCorredor: {
+        _id: "",
+        nombre: "",
+        tiempo: 0,
+      },
+      timeInputs: {
+        minutos: 0,
+        segundos: 0,
+        milisegundos: 0,
+      },
+      duplicateCorredor: {
+        nombre: "",
+        categoria: "",
+        edad: 0,
+        tiempo: 0,
+        rut: "",
+        team: "",
+        telefono: "",
+        entregado: false,
+      },
       valid: false,
       categorias: [
         { text: "Kids", value: "Kids", color: "blue" },
@@ -283,7 +517,6 @@ export default {
         { title: "Edad", key: "edad" },
         { title: "Número", key: "numero" },
         { title: "RUT", key: "rut" },
-        { title: "Tiempo", key: "tiempo" },
         { title: "Equipo", key: "team" },
         { title: "Teléfono", key: "telefono" },
         { title: "Número Entregado", key: "entregado", align: "center" },
@@ -319,6 +552,15 @@ export default {
           color: categoriaInfo ? categoriaInfo.color : 'grey'
         };
       }).sort((a, b) => b.cantidad - a.cantidad);
+    },
+    calculatedTiempoMs() {
+      const min = Math.max(0, parseInt(this.timeInputs.minutos) || 0);
+      const sec = Math.max(0, parseInt(this.timeInputs.segundos) || 0);
+      const ms = Math.max(0, parseInt(this.timeInputs.milisegundos) || 0);
+      return (min * 60000) + (sec * 1000) + ms;
+    },
+    formattedCalculatedTime() {
+      return this.formatTime(this.calculatedTiempoMs);
     }
   },
   methods: {
@@ -331,8 +573,123 @@ export default {
         console.error("Error fetching corredores:", error);
       }
     },
+    showImportDialog() {
+      this.importDialog = true;
+    },
+    async importarDesdeFirebase() {
+      this.importLoading = true;
+      this.importDialog = false;
+      try {
+        const response = await axios.post(
+          "http://127.0.0.1:3030/corredores/importar-firebase"
+        );
+        this.importResult = {
+          importados: response.data.importados,
+          omitidos: response.data.omitidos,
+          errores: response.data.errores,
+          detalles: response.data.detalles || [],
+        };
+        this.importResultDialog = true;
+        await this.fetchCorredores();
+      } catch (error) {
+        console.error("Error importando desde Firebase:", error);
+        this.snackbarMessage =
+          error.response?.data?.message ||
+          "Error al conectar con Firebase. Verifica el service account.";
+        this.snackbarColor = "error";
+        this.snackbar = true;
+      } finally {
+        this.importLoading = false;
+      }
+    },
+    formatTime(ms) {
+      if (!ms || ms <= 0) return "00:00.000";
+      const totalMs = Math.max(0, Math.round(ms));
+      const mins = Math.floor(totalMs / 60000);
+      const secs = Math.floor((totalMs % 60000) / 1000);
+      const millis = totalMs % 1000;
+      return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}.${millis.toString().padStart(3, "0")}`;
+    },
+    showEditTimeDialog(corredor) {
+      this.timeCorredor = { ...corredor };
+      const currentMs = corredor.tiempo || 0;
+      this.timeInputs = {
+        minutos: Math.floor(currentMs / 60000),
+        segundos: Math.floor((currentMs % 60000) / 1000),
+        milisegundos: currentMs % 1000,
+      };
+      this.editTimeDialog = true;
+    },
+    closeEditTimeDialog() {
+      this.editTimeDialog = false;
+    },
+    async updateTimeSubmit() {
+      try {
+        const finalTiempo = this.calculatedTiempoMs;
+        await axios.patch(
+          `http://127.0.0.1:3030/corredores/${this.timeCorredor._id}`,
+          { tiempo: finalTiempo }
+        );
+        await this.fetchCorredores();
+        this.closeEditTimeDialog();
+        this.snackbarMessage = `Tiempo de ${this.timeCorredor.nombre} actualizado a ${this.formatTime(finalTiempo)}`;
+        this.snackbarColor = "success";
+        this.snackbar = true;
+      } catch (error) {
+        console.error("Error actualizando tiempo:", error);
+        this.snackbarMessage = "Error al actualizar el tiempo del piloto.";
+        this.snackbarColor = "error";
+        this.snackbar = true;
+      }
+    },
     showCreateDialog() {
       this.createDialog = true;
+    },
+    showDuplicateDialog(corredor) {
+      this.duplicateCorredor = {
+        nombre: corredor.nombre,
+        categoria: corredor.categoria,
+        edad: corredor.edad,
+        tiempo: 0,
+        rut: corredor.rut,
+        team: corredor.team,
+        telefono: corredor.telefono,
+        entregado: false,
+      };
+      this.duplicateDialog = true;
+    },
+    closeDuplicateDialog() {
+      this.duplicateDialog = false;
+      this.resetDuplicateCorredor();
+    },
+    async duplicateCorredorSubmit() {
+      try {
+        this.duplicateCorredor.edad = parseInt(this.duplicateCorredor.edad);
+        this.duplicateCorredor.tiempo = 0;
+        await axios.post("http://127.0.0.1:3030/corredores", this.duplicateCorredor);
+        await this.fetchCorredores();
+        this.closeDuplicateDialog();
+        this.snackbarMessage = `Piloto duplicado exitosamente en ${this.duplicateCorredor.categoria}`;
+        this.snackbarColor = "success";
+        this.snackbar = true;
+      } catch (error) {
+        console.error("Error duplicando corredor:", error);
+        this.snackbarMessage = "Error al duplicar el piloto. Verifica los datos.";
+        this.snackbarColor = "error";
+        this.snackbar = true;
+      }
+    },
+    resetDuplicateCorredor() {
+      this.duplicateCorredor = {
+        nombre: "",
+        categoria: "",
+        edad: 0,
+        tiempo: 0,
+        rut: "",
+        team: "",
+        telefono: "",
+        entregado: false,
+      };
     },
     closeCreateDialog() {
       this.createDialog = false;
